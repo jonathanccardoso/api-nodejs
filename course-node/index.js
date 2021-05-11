@@ -37,40 +37,31 @@ function getAddress(idUser, callback) {
   }, 2000);
 }
 
-const userPromise = getUser();
-userPromise
-  .then(function (user) {
-    // pass data to another then
-    return getPhone(user.id).then(function resolvePhone(result) {
-      return {
-        user: {
-          name: user.name,
-          id: user.id,
-        },
-        phone: result,
-      };
-    });
-  })
-  .then(function (result1) {
-    const address = getAddressAsync(result1.user.id);
-    return address.then(function resolveAddress(result) {
-      return {
-        user: result1.user,
-        phone: result1.phone,
-        address: result,
-      };
-    });
-  })
-  .then(function (result) {
-    console.log(`
-    Nome: ${result.user.name}
-    Endereco: ${result.address.street}, ${result.address.number}
-    Telefone: (${result.phone.ddd}) ${result.phone.phone}
-    `);
-  })
-  .catch(function (error) {
-    console.log("Failed on user", error);
-  });
+// async only as functions promises!
+main();
 
-// const phone = getPhone(user.id);
-// console.log("phone", phone);
+async function main() {
+  try {
+    console.time("time-promise");
+    const user = await getUser();
+    // const phone = await getPhone(user.id);
+    // const address = await getAddressAsync(user.id);
+
+    // run in background is more performative
+    const result = await Promise.all([
+      getPhone(user.id),
+      getAddressAsync(user.id),
+    ]);
+    const phone = result[0];
+    const address = result[1];
+
+    console.log(`
+      Nome: ${user.name}
+      Endereco: ${address.street}, ${address.number}
+      Telefone: (${phone.ddd}) ${phone.phone}
+    `);
+    console.timeEnd("time-promise");
+  } catch (error) {
+    console.error("Failed!", error);
+  }
+}
