@@ -1,22 +1,31 @@
 // callback resolve async to sync methods
 
-function getUser(callback) {
-  setTimeout(function () {
-    return callback(null, {
-      id: 1,
-      name: "Aladin",
-      birthday: new Date(),
-    });
-  }, 1000);
+const util = require("util"); //to convert callback to promise
+const getAddressAsync = util.promisify(getAddress);
+
+function getUser() {
+  return new Promise(function resolvePromise(resolve, reject) {
+    setTimeout(function () {
+      // return reject(new Error("Failed user!"));
+
+      return resolve({
+        id: 1,
+        name: "Aladin",
+        birthday: new Date(),
+      });
+    }, 1000);
+  });
 }
 
-function getPhone(idUser, callback) {
-  setTimeout(() => {
-    return callback(null, {
-      phone: "1190000000",
-      ddd: 11,
-    });
-  }, 2000);
+function getPhone(idUser) {
+  return new Promise(function resolvePromise(resolve, reject) {
+    setTimeout(() => {
+      return resolve({
+        phone: "1190000000",
+        ddd: 11,
+      });
+    }, 2000);
+  });
 }
 
 function getAddress(idUser, callback) {
@@ -28,34 +37,40 @@ function getAddress(idUser, callback) {
   }, 2000);
 }
 
-function resolveUser(error, user) {
-  console.log("user", user);
-}
-
-getUser(function resolveUser(error, user) {
-  if (error) {
-    console.error("Failed user", error);
-    return;
-  }
-  getPhone(user.id, function resolvePhone(error1, phone) {
-    if (error1) {
-      console.error("Failed phone", error1);
-      return;
-    }
-    getAddress(user.id, function resolveAdrress(error2, address) {
-      if (error2) {
-        console.error("Failed phone", error2);
-        return;
-      }
-
-      console.log(`
-      Nome: ${user.name},
-      Endereco: ${address.street}, nº${address.number},
-      Telefone: (${phone.ddd}) ${phone.phone}
-      `);
+const userPromise = getUser();
+userPromise
+  .then(function (user) {
+    // pass data to another then
+    return getPhone(user.id).then(function resolvePhone(result) {
+      return {
+        user: {
+          name: user.name,
+          id: user.id,
+        },
+        phone: result,
+      };
     });
+  })
+  .then(function (result1) {
+    const address = getAddressAsync(result1.user.id);
+    return address.then(function resolveAddress(result) {
+      return {
+        user: result1.user,
+        phone: result1.phone,
+        address: result,
+      };
+    });
+  })
+  .then(function (result) {
+    console.log(`
+    Nome: ${result.user.name}
+    Endereco: ${result.address.street}, ${result.address.number}
+    Telefone: (${result.phone.ddd}) ${result.phone.phone}
+    `);
+  })
+  .catch(function (error) {
+    console.log("Failed on user", error);
   });
-});
 
 // const phone = getPhone(user.id);
 // console.log("phone", phone);
